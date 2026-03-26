@@ -64,13 +64,84 @@ def view_re_exam_status():
     else: print("📂 No re-exams.")
     conn.close()
 
+
+#-------------------- AI Prediction Function -------------------
+def ai_prediction():
+    print("\n🤖 AI Performance Analysis")
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    student_id = input("Enter Student ID: ")
+
+    cursor.execute("""
+        SELECT subject, marks, max_marks
+        FROM results
+        WHERE student_id=?
+    """, (student_id,))
+
+    data = cursor.fetchall()
+
+    if not data:
+        print("❌ No data found for this student.")
+        conn.close()
+        return
+
+    marks_dict = {}
+    total = 0
+    count = 0
+
+    for subject, marks, max_marks in data:
+        percentage = (marks / max_marks) * 100
+        marks_dict[subject] = percentage
+        total += percentage
+        count += 1
+
+    avg = total / count
+
+    # Grade logic
+    if avg >= 90:
+        grade = "A+"
+    elif avg >= 75:
+        grade = "A"
+    elif avg >= 60:
+        grade = "B"
+    elif avg >= 50:
+        grade = "C"
+    elif avg >= 40:
+        grade = "D"
+    else:
+        grade = "F"
+
+    result = "Pass" if avg >= 40 else "Fail"
+    weak_subject = min(marks_dict, key=marks_dict.get)
+
+    print("\n--- AI Result ---")
+    print("Average %:", round(avg, 2))
+    print("Grade:", grade)
+    print("Result:", result)
+    print("Weak Subject:", weak_subject)
+
+    conn.close()
+
+
 def result_menu():
     while True:
-        print("\n🎓 Result Menu:\n1. Add Result\n2. View Results\n3. Register Re-Exam\n4. View Re-Exam Status\n5. Go Back")
-        choice = input("Choice (1-5): ").strip()
-        if choice=="1": add_result()
-        elif choice=="2": view_results()
-        elif choice=="3": register_re_exam()
-        elif choice=="4": view_re_exam_status()
-        elif choice=="5": break
-        else: print("❌ Invalid.")
+        print("\n🎓 Result Menu:\n1. Add Result\n2. View Results\n3. Register Re-Exam\n4. View Re-Exam Status\n5. AI Performance Analysis\n6. Go Back")
+        
+        choice = input("Choice (1-6): ").strip()
+        
+        if choice=="1": 
+            add_result()
+        elif choice=="2": 
+            view_results()
+        elif choice=="3": 
+            register_re_exam()
+        elif choice=="4": 
+            view_re_exam_status()
+        elif choice=="5": 
+            ai_prediction()   
+        elif choice=="6": 
+            break
+        else: 
+            print("❌ Invalid.")
