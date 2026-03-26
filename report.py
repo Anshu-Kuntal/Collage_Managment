@@ -1,26 +1,28 @@
-# reports.py
 import os
 from database import connect_db
-from tabulate import tabulate
 
 # Folder to save report cards
 REPORTS_DIR = "reports"
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
-# ------------------- Generate Report Card -------------------
+# ------------------- Generate Single Report Card -------------------
+
 def generate_report_card(student_id):
     conn = connect_db()
     cursor = conn.cursor()
 
-    # Get student info
     cursor.execute("""
-        SELECT students.name, students.roll_no, courses.course_name
+        SELECT students.name,
+               students.roll_no,
+               courses.course_name
         FROM students
         JOIN courses ON students.course_id = courses.id
         WHERE students.id = ?
     """, (student_id,))
+
     student = cursor.fetchone()
+
     if not student:
         print("❌ Student not found.")
         conn.close()
@@ -28,12 +30,12 @@ def generate_report_card(student_id):
 
     name, roll_no, course = student
 
-    # Get student results
     cursor.execute("""
         SELECT subject, marks, max_marks
         FROM results
         WHERE student_id = ?
     """, (student_id,))
+
     results = cursor.fetchall()
 
     if not results:
@@ -41,43 +43,47 @@ def generate_report_card(student_id):
         conn.close()
         return
 
-    # Prepare report content
-    report_lines = [
-        f"🏫 College Management System - Report Card",
-        f"Student Name : {name}",
-        f"Roll Number  : {roll_no}",
-        f"Course       : {course}",
-        "-"*40,
-        f"{'Subject':<20} {'Marks':<5} {'Max Marks':<9}"
-    ]
+    lines = []
+    lines.append("🏫 College Management System - Report Card")
+    lines.append(f"Student Name : {name}")
+    lines.append(f"Roll Number  : {roll_no}")
+    lines.append(f"Course       : {course}")
+    lines.append("-" * 45)
+    lines.append(f"{'Subject':<20}{'Marks':<10}{'Max Marks'}")
 
     total_marks = 0
     total_max = 0
+
     for subject, marks, max_marks in results:
-        report_lines.append(f"{subject:<20} {marks:<5} {max_marks:<9}")
+        lines.append(f"{subject:<20}{marks:<10}{max_marks}")
         total_marks += marks
         total_max += max_marks
 
-    percentage = (total_marks / total_max * 100) if total_max else 0
-    report_lines.append("-"*40)
-    report_lines.append(f"Total Marks  : {total_marks}/{total_max}")
-    report_lines.append(f"Percentage   : {percentage:.2f}%")
+    percent = (total_marks / total_max * 100) if total_max else 0
 
-    # Save to file
-    report_file = os.path.join(REPORTS_DIR, f"{roll_no}_report.txt")
-    with open(report_file, "w") as f:
-        f.write("\n".join(report_lines))
+    lines.append("-" * 45)
+    lines.append(f"Total Marks : {total_marks}/{total_max}")
+    lines.append(f"Percentage  : {percent:.2f}%")
 
-    print(f"✅ Report card generated: {report_file}")
+    report_path = os.path.join(REPORTS_DIR, f"{roll_no}_report.txt")
+
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
     conn.close()
 
+    print(f"✅ Report card saved to: {report_path}")
 
-# ------------------- Generate All Report Cards -------------------
+
+# ------------------- Generate All Reports -------------------
+
 def generate_all_reports():
     conn = connect_db()
     cursor = conn.cursor()
+
     cursor.execute("SELECT id FROM students")
     students = cursor.fetchall()
+
     if not students:
         print("❌ No students found.")
         conn.close()
@@ -86,11 +92,13 @@ def generate_all_reports():
     for (sid,) in students:
         generate_report_card(sid)
 
-    print("✅ All report cards generated successfully.")
     conn.close()
+
+    print("✅ All report cards generated successfully.")
 
 
 # ------------------- Reports Menu -------------------
+
 def reports_menu():
     while True:
         print("\n📝 Reports Menu:")
@@ -98,13 +106,17 @@ def reports_menu():
         print("2. Generate All Report Cards")
         print("3. Go Back")
 
-        choice = input("Enter your choice (1-3): ").strip()
+        choice = input("Enter choice (1-3): ").strip()
+
         if choice == "1":
-            student_id = input("Enter Student ID: ")
-            generate_report_card(student_id)
+            sid = input("Enter Student ID: ").strip()
+            generate_report_card(sid)
+
         elif choice == "2":
             generate_all_reports()
+
         elif choice == "3":
             break
+
         else:
-            print("❌ Invalid input. Enter 1-3.")
+            print("❌ Invalid choice.")
