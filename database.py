@@ -12,6 +12,7 @@ def create_tables():
     conn = connect_db()
     cursor = conn.cursor()
 
+    # ------------------- Admin -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS admins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +21,7 @@ def create_tables():
         )
     """)
 
+    # ------------------- Courses -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS courses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,11 +32,14 @@ def create_tables():
         )
     """)
 
+    # ------------------- Students -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             roll_no TEXT UNIQUE NOT NULL,
+            father_name TEXT,
+            mobile TEXT,
             course_id INTEGER,
             year_or_sem INTEGER,
             total_fees INTEGER DEFAULT 0,
@@ -43,26 +48,41 @@ def create_tables():
         )
     """)
 
+    # ------------------- Teachers (🔥 FIXED) -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS teachers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             emp_code TEXT UNIQUE NOT NULL,
             subject TEXT NOT NULL,
-            salary REAL
+            salary REAL,
+            username TEXT UNIQUE,
+            password TEXT
         )
     """)
 
+    # ------------------- Subjects -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS subjects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             course_id INTEGER NOT NULL,
             term_number INTEGER NOT NULL,
             subject_name TEXT NOT NULL,
+            type TEXT DEFAULT 'Compulsory',
             FOREIGN KEY(course_id) REFERENCES courses(id)
         )
     """)
 
+    # ------------------- Student Subjects -------------------
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS student_subjects (
+            student_id INTEGER,
+            subject_name TEXT,
+            FOREIGN KEY(student_id) REFERENCES students(id)
+        )
+    """)
+
+    # ------------------- Results -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS results (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +97,7 @@ def create_tables():
         )
     """)
 
+    # ------------------- Re Exams -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS re_exams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,11 +110,13 @@ def create_tables():
         )
     """)
 
+    # ------------------- Attendance -------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id INTEGER,
             date TEXT NOT NULL,
+            subject TEXT NOT NULL,
             status TEXT CHECK(status IN ('Present','Absent')) NOT NULL,
             FOREIGN KEY(student_id) REFERENCES students(id)
         )
