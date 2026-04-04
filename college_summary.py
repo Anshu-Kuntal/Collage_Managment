@@ -51,6 +51,24 @@ def college_summary():
     else:
         print("📂 No fee records found.")
 
+    # 🔥 ------------------- Fee Due Alert -------------------
+    print("\n⚠ Fee Due Alert:")
+    cursor.execute("""
+        SELECT name, total_fees, fees_paid
+        FROM students
+    """)
+    students = cursor.fetchall()
+
+    found = False
+    for name, total, paid in students:
+        due = total - paid
+        if due > 0:
+            print(f"⚠ {name} → Due: {due}")
+            found = True
+
+    if not found:
+        print("✅ All students have cleared fees")
+
     # ------------------- Average Results -------------------
     print("\n📊 Average Results per Course:")
     cursor.execute("""
@@ -67,5 +85,38 @@ def college_summary():
             print(f"{course}: {avg:.2f}")
     else:
         print("📂 No results found.")
+
+    conn.close()
+
+    # ------------------- Dashboard Summary -------------------
+def dashboard_summary():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM students")
+    students = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM teachers")
+    teachers = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM courses")
+    courses = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT SUM(total_fees), SUM(fees_paid)
+        FROM students
+    """)
+    total, paid = cursor.fetchone()
+
+    total = total or 0
+    paid = paid or 0
+
+    print("\n📊 ===== DASHBOARD =====")
+    print(f"👨‍🎓 Total Students: {students}")
+    print(f"👨‍🏫 Total Teachers: {teachers}")
+    print(f"📚 Total Courses: {courses}")
+    print(f"💰 Total Fees: {total}")
+    print(f"💵 Fees Collected: {paid}")
+    print(f"⚠ Pending Fees: {total - paid}")
 
     conn.close()
