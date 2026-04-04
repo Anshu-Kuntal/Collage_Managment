@@ -1,0 +1,1 @@
+The main objective of the College Management System is to develop an efficient and reliable system that can automate the various operations of a college. The system is designed to simplify complex processes, reduce manual work, and improve overall productivity.
