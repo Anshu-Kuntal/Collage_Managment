@@ -3,6 +3,7 @@ import sqlite3
 from database import connect_db
 from tabulate import tabulate
 
+#------------------- Add Result -------------------
 def add_result():
     conn = connect_db(); cursor = conn.cursor()
     cursor.execute("SELECT id, name FROM students"); students = cursor.fetchall()
@@ -25,24 +26,103 @@ def add_result():
                        (student_id, year_or_sem, academic_year, sub[0], marks, max_marks))
     conn.commit(); print("✅ Result added."); conn.close()
 
+#------------------- View Results -------------------
 def view_results():
-    conn = connect_db(); cursor = conn.cursor()
+    conn = connect_db()
+    cursor = conn.cursor()
+
     student_id = input("Student ID (or Enter all): ").strip()
+    course_id = input("Course ID (or Enter): ").strip()
+    year_sem = input("Year/Sem (or Enter): ").strip()
+    academic_year = input("Academic Year (or Enter): ").strip()
+
+    subject = ""
+
+    # 🔥 Subject dropdown (safe + validated)
+    if course_id and year_sem:
+        cursor.execute("""
+            SELECT DISTINCT subject_name
+            FROM student_subjects ss
+            JOIN students s ON ss.student_id = s.id
+            WHERE s.course_id=? AND s.year_or_sem=?
+        """, (course_id, year_sem))
+
+        subjects = cursor.fetchall()
+
+        if subjects:
+            print("\n📘 Available Subjects:")
+            for i, sub in enumerate(subjects, 1):
+                print(f"{i}. {sub[0]}")
+
+            choice = input("Select subject (or Enter to skip): ").strip()
+
+            if choice:
+                try:
+                    index = int(choice) - 1
+                    if 0 <= index < len(subjects):
+                        subject = subjects[index][0]
+                    else:
+                        print("❌ Invalid selection, skipping subject filter.")
+                except:
+                    print("❌ Invalid input, skipping subject filter.")
+
     query = """
-        SELECT students.name, courses.course_name, students.year_or_sem, results.academic_year, results.subject, results.marks, results.max_marks
+        SELECT students.name,
+               courses.course_name,
+               students.year_or_sem,
+               results.academic_year,
+               results.subject,
+               results.marks,
+               results.max_marks
         FROM results
-        JOIN students ON results.student_id=students.id
-        JOIN courses ON students.course_id=courses.id
+        JOIN students ON results.student_id = students.id
+        JOIN courses ON students.course_id = courses.id
     """
-    params = ()
-    if student_id: query += " WHERE students.id=?"; params=(student_id,)
-    cursor.execute(query, params)
+
+    conditions = []
+    params = []
+
+    if student_id:
+        conditions.append("students.id=?")
+        params.append(student_id)
+
+    if course_id:
+        conditions.append("students.course_id=?")
+        params.append(course_id)
+
+    if year_sem:
+        conditions.append("students.year_or_sem=?")
+        params.append(year_sem)
+
+    if subject:
+        conditions.append("results.subject=?")
+        params.append(subject)
+
+    if academic_year:
+        conditions.append("results.academic_year=?")
+        params.append(academic_year)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY students.name ASC"
+
+    cursor.execute(query, tuple(params))
     rows = cursor.fetchall()
+
     if rows:
-        print(tabulate(rows, headers=["Student","Course","Year/Sem","Acad Year","Subject","Marks","Max Marks"], tablefmt="grid"))
-    else: print("📂 No results found.")
+        print(tabulate(
+            rows,
+            headers=["Student", "Course", "Sem", "Academic Year", "Subject", "Marks", "Max Marks"],
+            tablefmt="grid",
+            stralign="left"
+        ))
+    else:
+        print("📂 No results found.")
+
     conn.close()
 
+#------------------- Register Re-Exam -------------------
 def register_re_exam():
     conn = connect_db(); cursor = conn.cursor()
     student_id = input("Student ID: "); subject=input("Subject: ")
@@ -51,17 +131,94 @@ def register_re_exam():
                    (student_id, subject, term_number, academic_year))
     conn.commit(); print("✅ Re-Exam registered."); conn.close()
 
-def view_re_exam_status():
-    conn = connect_db(); cursor = conn.cursor()
+
+#------------------- Register Re-Exam -------------------
+def register_re_exam():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    student_id = input("Student ID: ").strip()
+
+    # 🔥 Validate student
+    cursor.execute("SELECT year_or_sem FROM students WHERE id=?", (student_id,))
+    info = cursor.fetchone()
+
+    if not info:
+        print("❌ Student not found.")
+        conn.close()
+        return
+
+    term_number = info[0]
+
+    # 🔥 Fetch only selected subjects
     cursor.execute("""
-        SELECT re_exams.id, students.name, re_exams.subject, re_exams.term_number, re_exams.academic_year, re_exams.status
+        SELECT subject_name
+        FROM student_subjects
+        WHERE student_id=?
+    """, (student_id,))
+
+    subjects = cursor.fetchall()
+
+    if not subjects:
+        print("❌ No subjects assigned to this student.")
+        conn.close()
+        return
+
+    print("\n📘 Subjects:")
+    for i, sub in enumerate(subjects, 1):
+        print(f"{i}. {sub[0]}")
+
+    # 🔥 Select subject safely
+    try:
+        choice = int(input("Select subject: "))
+        subject = subjects[choice - 1][0]
+    except:
+        print("❌ Invalid subject selection")
+        conn.close()
+        return
+
+    academic_year = input("Academic Year: ").strip()
+
+    cursor.execute("""
+        INSERT INTO re_exams (student_id, subject, term_number, academic_year, status)
+        VALUES (?, ?, ?, ?, 'Pending')
+    """, (student_id, subject, term_number, academic_year))
+
+    conn.commit()
+    conn.close()
+
+    print("✅ Re-Exam registered successfully.")
+
+
+#------------------- View Re-Exam Status -------------------
+def view_re_exam_status():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT re_exams.id,
+               students.name,
+               re_exams.subject,
+               re_exams.term_number,
+               re_exams.academic_year,
+               re_exams.status
         FROM re_exams
-        JOIN students ON re_exams.student_id=students.id
+        JOIN students ON re_exams.student_id = students.id
+        ORDER BY re_exams.id ASC
     """)
+
     rows = cursor.fetchall()
+
     if rows:
-        print(tabulate(rows, headers=["ID","Student","Subject","Term/Year","Acad Year","Status"], tablefmt="grid"))
-    else: print("📂 No re-exams.")
+        print(tabulate(
+            rows,
+            headers=["ID","Student","Subject","Term","Academic Year","Status"],
+            tablefmt="grid",
+            stralign="left"
+        ))
+    else:
+        print("📂 No re-exams found.")
+
     conn.close()
 
 
