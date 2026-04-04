@@ -142,18 +142,30 @@ def add_subject():
 
     course_id = input_int("Course ID: ")
     term_number = input_int("Term Number: ")
-    subject_name = input("Subject Name: ")
+    subject_name = input("Subject Name: ").strip()
+
+    # 🔥 NEW PART
+    while True:
+        sub_type = input("Type (C=Compulsory / O=Optional): ").strip().upper()
+        if sub_type == "C":
+            sub_type = "Compulsory"
+            break
+        elif sub_type == "O":
+            sub_type = "Optional"
+            break
+        else:
+            print("❌ Enter C or O")
 
     cursor.execute("""
-        INSERT INTO subjects (course_id, term_number, subject_name)
-        VALUES (?, ?, ?)
-    """, (course_id, term_number, subject_name))
+        INSERT INTO subjects (course_id, term_number, subject_name, type)
+        VALUES (?, ?, ?, ?)
+    """, (course_id, term_number, subject_name, sub_type))
 
     conn.commit()
     conn.close()
     print("✅ Subject added.")
 
-
+#------------------- VIEW SUBJECT ------------------
 def view_subjects():
     conn = connect_db()
     cursor = conn.cursor()
@@ -162,7 +174,8 @@ def view_subjects():
         SELECT subjects.id,
                courses.course_name,
                subjects.term_number,
-               subjects.subject_name
+               subjects.subject_name,
+               subjects.type
         FROM subjects
         JOIN courses ON subjects.course_id = courses.id
         ORDER BY subjects.id ASC
@@ -171,22 +184,22 @@ def view_subjects():
     subjects = cursor.fetchall()
 
     if subjects:
-        print("+------+------------------------+------+------------------------+")
-        print("| ID   | Course                 | Term | Subject                |")
-        print("+------+------------------------+------+------------------------+")
+        print("+------+------------------------+------+------------------------+--------------+")
+        print("| ID   | Course                 | Term | Subject                | Type         |")
+        print("+------+------------------------+------+------------------------+--------------+")
 
         for s in subjects:
             print(
-                f"| {s[0]:<4} | {s[1]:<22} | {s[2]:<4} | {s[3]:<22} |"
+                f"| {s[0]:<4} | {s[1]:<22} | {s[2]:<4} | {s[3]:<22} | {s[4]:<12} |"
             )
 
-        print("+------+------------------------+------+------------------------+")
+        print("+------+------------------------+------+------------------------+--------------+")
     else:
         print("📂 No subjects found.")
 
     conn.close()
 
-
+#------------------- UPDATE SUBJECT -------------------
 def update_subject():
     conn = connect_db()
     cursor = conn.cursor()
@@ -216,7 +229,7 @@ def update_subject():
     conn.close()
     print("✅ Subject updated.")
 
-
+#------------------- DELETE SUBJECT -------------------
 def delete_subject():
     conn = connect_db()
     cursor = conn.cursor()
